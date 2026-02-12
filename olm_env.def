@@ -1,0 +1,67 @@
+# olmo_env.def
+# Builds an environment for the ai2-olmo project using its pyproject.toml
+
+Bootstrap: docker
+From: nvidia/cuda:12.6.1-devel-ubuntu22.04
+
+%labels
+    Maintainer "pUmpKin-Co"
+    Description "STATIC environment for ai2-olmo. Uses pyproject.toml for dependencies."
+
+%environment
+    export DEBIAN_FRONTEND=noninteractive
+    export TZ=Etc/UTC
+    export CUDA_HOME=/usr/local/cuda
+    export APPTAINER_BIND_PATH="/etc/hosts,/etc/resolv.conf"
+    export PYTHONPATH=/opt/olmo:$PYTHONPATH
+
+%post
+    export DEBIAN_FRONTEND=noninteractive
+
+    echo "--> Step 1: Initial update and install prerequisites..."
+    apt-get update
+    apt-get install -y --no-install-recommends \
+        software-properties-common \
+        wget \
+        build-essential \
+        git
+
+    echo "--> Step 2: Add the deadsnakes PPA for Python 3.12..."
+    add-apt-repository -y ppa:deadsnakes/ppa
+
+    echo "--> Step 3: Update package list AGAIN to include the new PPA..."
+    apt-get update
+
+    echo "--> Step 4: Now, install Python 3.12 and its development files..."
+    apt-get install -y --no-install-recommends \
+        python3.12 \
+        python3.12-venv \
+        python3.12-dev
+
+    echo "--> Step 5: Clean up apt cache to reduce image size..."
+    rm -rf /var/lib/apt/lists/*
+
+    # --- Python Configuration ---
+    echo "--> Configuring Python alternatives and installing pip..."
+    update-alternatives --install /usr/bin/python python /usr/bin/python3.12 1
+    python -m ensurepip --upgrade
+    python -m pip install --no-cache-dir --upgrade pip setuptools wheel
+
+    # --- Python Dependency Installation ---
+    echo "--> Installing Python dependencies from pyproject.toml..."
+    python -m pip install --no-cache-dir /opt/olmo[train]
+
+    echo "--> Installing Flash Attention 2..."
+    # This is kept separate as it's a performance-critical dependency
+    python -m pip install --no-cache-dir flash_attn --no-build-isolation
+
+%files
+    # Copy the entire project directory (where pyproject.toml is)
+    # to /opt/olmo inside the container.
+    . /opt/olmo
+
+%runscript
+    echo "This is an environment container for the ai2-olmo project."
+    echo "The project source is located at /opt/olmo."
+    echo "Use 'apptainer exec' to run commands inside it, like bash."
+

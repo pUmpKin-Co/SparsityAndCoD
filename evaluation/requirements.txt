@@ -1,0 +1,5 @@
+# Dependencies anonymized for conference submission
+# ai2-catwalk @ git+https://github.com/anonymous/catwalk.git@olmo-eval
+# hf_olmo @ git+https://github.com/anonymous/OLMo.git@main#subdirectory=hf_olmo
+pygsheets
+#ai2-tango[beaker,gs]==1.2.1

@@ -1,0 +1,118 @@
+run_name: OLMo-1B
+seed: 6198
+dry_run: false
+
+wandb:
+  name: ${run_name}
+  project: anonymous-project
+  group: OLMo-1B-AdamW
+  log_interval: 10
+  entity: null
+
+model:
+  d_model: 2048
+  n_heads: 16
+  n_layers: 16
+  mlp_ratio: 8
+  weight_tying: false
+  alibi: false
+  rope: true
+  flash_attention: true
+  attention_dropout: 0.0
+  attention_layer_norm: false
+  clip_qkv: null
+  include_bias: false
+  block_type: sequential
+  layer_norm_type: rms
+  layer_norm_with_affine: true
+  layer_norm_eps: 1e-6
+  bias_for_layer_norm: false
+  attention_layer_norm_with_affine: false
+  activation_type: swiglu
+  residual_dropout: 0.0
+  embedding_dropout: 0.0
+  max_sequence_length: 1024
+  vocab_size: 50280
+  embedding_size: 50304
+  eos_token_id: 50279
+  pad_token_id: 1
+  init_device: cuda
+  init_fn: normal
+  init_std: 0.02
+  init_cutoff_factor: null
+
+compile: null  # causes instability on AMD GPUs
+
+ddp:
+  grad_sync_mode: batch
+  find_unused_params: false
+
+optimizer:
+  name: adamw
+  learning_rate: 4.0e-4
+  weight_decay: 0.1
+  betas:
+  - 0.9
+  - 0.95
+  metrics_log_interval: 10
+  eps: 1e-8
+  decay_norm_and_bias: true
+  decay_embeddings: true
+
+scheduler:
+  name: cosine_with_warmup
+  t_warmup: 5000
+  alpha_f: 0.1
+  warmup_min_lr: 0
+
+tokenizer:
+  identifier: allenai/OLMo-7B-0424
+  truncate_direction: right
+
+save_folder: /tmp/checkpoints  # doesn't matter since we'll upload to S3
+remote_save_folder: null
+save_overwrite: false
+
+# Sharded checkpoints (best for restarts)
+save_interval: 1000
+save_num_checkpoints_to_keep: 1
+# Unsharded checkpoints (for final storage)
+save_interval_unsharded: 10000
+save_num_unsharded_checkpoints_to_keep: 1
+
+load_path: null
+
+max_duration: 1ep
+stop_at: null
+global_train_batch_size: 1
+device_train_microbatch_size: 1
+gen1_gc_interval: 1
+precision: amp_bf16
+distributed_strategy: fsdp
+
+fsdp:
+  wrapping_strategy: by_block_and_size
+  precision: mixed
+  use_orig_params: true
+  sharding_strategy: FULL_SHARD
+  hybrid_sharding_num_model_replicas: null
+
+max_grad_norm: 1.0
+max_grad_norm_ratio: null
+
+speed_monitor:
+  window_size: 20
+
+eval_interval: ${save_interval}
+eval_subset_num_batches: -1
+device_eval_batch_size: ${device_train_microbatch_size}
+
+data:
+  pad_direction: right
+  num_workers: 0
+  drop_last: true
+  pin_memory: true
+  prefetch_factor: 16
+  persistent_workers: true
+  timeout: 0
+  paths: null
