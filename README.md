@@ -40,18 +40,18 @@ Through controlled depth-scaling experiments, we demonstrate that sparsity consi
 ## 📋 Table of Contents
 
 - [Overview](#overview)
-- [News](#news)
+- [News](#-news)
 - [Installation](#installation)
 - [Getting Started](#getting-started)
   - [Data Preparation](#data-preparation)
   - [Configuration](#configuration)
-- [Training](#training)
-- [Evaluation](#evaluation)
+- [Training](#-training)
+- [Evaluation](#-evaluation)
   - [Checkpoint Conversion](#checkpoint-conversion)
   - [Downstream Evaluation](#downstream-evaluation)
-- [Analysis Tools](#analysis-tools)
-- [Acknowledgments](#acknowledgments)
-- [License](#license)
+- [Analysis Tools](#-analysis-tools)
+- [Acknowledgments](#-acknowledgments)
+- [License](#-license)
 
 ---
 
