@@ -32,8 +32,8 @@ Through controlled depth-scaling experiments, we demonstrate that sparsity consi
 ---
 
 ## 📰 News
-
-- **[2026-02]** Initial codebase release with training and evaluation scripts
+- **[2026-02]** Our paper is released [here](./assets/Paper.pdf).
+- **[2026-02]** Initial codebase release with training and evaluation scripts.
 
 ---
 
@@ -202,7 +202,9 @@ python -m lm_eval \
 
 ## 🔬 Analysis Tools
 
-We provide several analysis scripts for investigating sparsity patterns:
+We provide several analysis scripts for investigating sparsity patterns and layer importance:
+
+### Sparsity Analysis
 
 | Script | Purpose | Usage |
 |--------|---------|-------|
@@ -210,11 +212,45 @@ We provide several analysis scripts for investigating sparsity patterns:
 | `analyze_attention_sparsity.py` | Analyze attention pattern sparsity | For studying implicit sequence-wise sparsity |
 | `analyze_weight_decay_sparsity.py` | Compare sparsity across weight decay values | For ablation studies |
 
-Example:
+### Layer Importance & Score Computation
+
+These scripts compute various metrics to analyze layer importance and functional differentiation, as described in our paper:
+
+| Script | Purpose | Key Features |
+|--------|---------|--------------|
+| [`compute_jacobian.py`](./scripts/score_computation/compute_jacobian.py) | Compute Jacobian matrices for residual identity mapping analysis | Measures how much each layer transforms its input via Jacobian analysis. Computes deviation from identity mapping, off-diagonal norms, diagonal statistics, Frobenius norm, and spectral norm. Supports both row-wise and element-wise computation methods. |
+| [`compute_usefulness.py`](./scripts/score_computation/compute_usefulness.py) | Compute layer usefulness via linear approximation | Replaces each layer with a linear mapping (W*x + b) fitted via least squares, then measures the loss increase. Computes a global usefulness score as the ratio of layers causing >10% loss increase. |
+| [`compute_layer_score.py`](./scripts/score_computation/compute_layer_score.py) | Comprehensive layer scoring with multiple metrics | **Causal Score** (`--compute_causal`): Measures the causal effect of skipping a layer on future layers. **Permutation Score** (`--compute_permutation`): Measures layer independence by swapping layer weights and computing normalized loss change.|
+
+Example usage:
+
 ```bash
-python scripts/analysis_script/analyze_attention_sparsity.py \
+# Compute Jacobian matrices for residual identity analysis
+python scripts/score_computation/compute_jacobian.py \
     --model_path /path/to/model \
-    --output_dir ./analysis_results
+    --output_dir ./jacobian_results \
+    --num_samples 50 \
+    --seq_length 512 \
+    --plot
+
+# Compute layer usefulness via linear approximation
+python scripts/score_computation/compute_usefulness.py \
+    --model_path /path/to/model \
+    --output_dir ./usefulness_results \
+    --num_samples 100 \
+    --seq_length 512
+
+# Compute causal effects between layers
+python scripts/score_computation/compute_layer_score.py \
+    --model_path /path/to/model \
+    --compute_causal \
+    --output_dir ./causal_results
+
+# Compute permutation scores
+python scripts/score_computation/compute_layer_score.py \
+    --model_path /path/to/model \
+    --compute_permutation \
+    --output_dir ./permutation_results
 ```
 
 ---
