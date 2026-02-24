@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="assets/ablation.png" alt="Sparsity Ablation Study" width="600px">
+  <img src="assets/leading.png" alt="Sparsity Ablation Study" width="600px">
 </p>
 
 <p align="center">
