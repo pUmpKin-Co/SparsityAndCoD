@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>When Does Sparsity Mitigate the Curse of Depth in LLMs</title>
+    <meta name="description" content="Revealing sparsity as an intrinsic variance regulator that unlocks effective depth utilization in Large Language Models.">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#1a1a2e',
+                        secondary: '#16213e',
+                        accent: '#0f3460',
+                        highlight: '#e94560',
+                        muted: '#95a5a6',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        * {
+            scroll-behavior: smooth;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #fafafa;
+            color: #1a1a2e;
+            line-height: 1.6;
+        }
+        
+        /* Clean card style */
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            transition: box-shadow 0.2s ease;
+        }
+        
+        .card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        /* Section reveal */
+        .reveal {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.6s ease;
+        }
+        
+        .reveal.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        /* Navigation */
+        .nav-link {
+            color: #666;
+            transition: color 0.2s;
+        }
+        
+        .nav-link:hover, .nav-link.active {
+            color: #e94560;
+        }
+        
+        /* Button styles */
+        .btn-primary {
+            background: #1a1a2e;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-weight: 500;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .btn-primary:hover {
+            background: #e94560;
+            transform: translateY(-1px);
+        }
+        
+        .btn-secondary {
+            background: white;
+            color: #1a1a2e;
+            border: 1px solid #ddd;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-weight: 500;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .btn-secondary:hover {
+            border-color: #e94560;
+            color: #e94560;
+        }
+        
+        /* Theorem box (now for insight) */
+        .insight-box {
+            background: #f8f9fa;
+            border-left: 4px solid #e94560;
+            padding: 1.5rem;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        /* Grid layouts */
+        .exp-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+        }
+        
+        @media (max-width: 768px) {
+            .exp-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        /* Highlight text */
+        .highlight {
+            color: #e94560;
+            font-weight: 600;
+        }
+        
+        /* Chart container */
+        .chart-container {
+            position: relative;
+            height: 250px;
+            margin: 1rem 0;
+        }
+        
+        /* Recipe result badge */
+        .result-badge {
+            background: linear-gradient(135deg, #e94560, #ff6b6b);
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        /* Step card in recipe */
+        .step-card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border-left: 3px solid #0f3460;
+        }
+        
+        /* Copy button */
+        .copy-btn {
+            background: #f0f0f0;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+        
+        .copy-btn:hover {
+            background: #e0e0e0;
+        }
+        
+        .copy-btn.copied {
+            background: #27ae60;
+            color: white;
+        }
+
+        /* Figure caption */
+        .figure-caption {
+            text-align: center;
+            font-size: 0.875rem;
+            color: #666;
+            margin-top: 0.5rem;
+        }
+
+        /* Author superscripts */
+        sup {
+            font-size: 0.65em;
+            color: #e94560;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-b border-gray-200 z-50">
+        <div class="max-w-6xl mx-auto px-4 py-4">
+            <div class="flex items-center justify-between">
+                <a href="#" class="font-semibold text-lg text-primary">Sparsity & CoD</a>
+                <div class="hidden md:flex items-center gap-8">
+                    <a href="#overview" class="nav-link text-sm">Overview</a>
+                    <a href="#motivation" class="nav-link text-sm">Motivation</a>
+                    <a href="#theory" class="nav-link text-sm">Theory</a>
+                    <a href="#experiments" class="nav-link text-sm">Experiments</a>
+                    <a href="#summary" class="nav-link text-sm">Summary</a>
+                </div>
+                <div class="flex items-center gap-3">
+                    <a href="https://github.com/pUmpKin-Co/SparsityAndCoD" target="_blank" class="text-gray-600 hover:text-highlight">
+                        <i data-lucide="github" class="w-5 h-5"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="pt-32 pb-20 bg-white">
+        <div class="max-w-4xl mx-auto px-4 text-center">
+            <!-- <p class="text-highlight font-medium text-sm tracking-wide uppercase mb-4">arXiv Preprint</p> -->
+            <h1 class="text-4xl md:text-5xl font-bold text-primary mb-6 leading-tight">
+                When Does Sparsity Mitigate<br>the Curse of Depth in LLMs
+            </h1>
+            <p class="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+                Revealing sparsity as an intrinsic <span class="highlight">variance regulator</span> that unlocks effective depth utilization
+            </p>
+            
+            <div class="flex flex-wrap justify-center gap-3 mb-10">
+                <a href="https://arxiv.org/abs/2603.15389" class="btn-primary">
+                    <i data-lucide="file-text" class="w-4 h-4"></i>
+                    Paper
+                </a>
+                <a href="https://github.com/pUmpKin-Co/SparsityAndCoD" target="_blank" class="btn-secondary">
+                    <i data-lucide="github" class="w-4 h-4"></i>
+                    Code
+                </a>
+            </div>
+            
+            <!-- Authors with superscripts -->
+            <div class="flex flex-wrap justify-center items-center gap-x-3 gap-y-1 text-sm text-gray-700 mb-4">
+                <span>Dilxat Muhtar<sup>*†3,4,5</sup></span>
+                <span>Xinyuan Song<sup>*6</sup></span>
+                <span>Sebastian Pokutta<sup>1</sup></span>
+                <span>Max Zimmer<sup>1</sup></span>
+                <span>Nico Pelleriti<sup>1</sup></span>
+                <span>Thomas Hofmann<sup>2</sup></span>
+                <span>Shiwei Liu<sup>†3,4,5</sup></span>
+            </div>
+            
+            <p class="text-xs text-gray-500 mb-3">
+                <sup>*</sup> Equal Contribution &nbsp;&nbsp; <sup>†</sup> Corresponding Author
+            </p>
+            
+            <!-- Institutions -->
+            <div class="text-xs text-gray-500 max-w-3xl mx-auto space-y-1">
+                <p><sup>1</sup> Zuse Institute Berlin & Technical University of Berlin</p>
+                <p><sup>2</sup> ETH Zürich</p>
+                <p><sup>3</sup> Max Planck Institute for Intelligent Systems</p>
+                <p><sup>4</sup> ELLIS Institute Tübingen</p>
+                <p><sup>5</sup> Tübingen AI Center</p>
+                <p><sup>6</sup> Emory University</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Overview Section -->
+    <section id="overview" class="py-20 bg-gray-50">
+        <div class="max-w-6xl mx-auto px-4">
+            <div class="text-center mb-12 reveal">
+                <h2 class="text-3xl font-bold text-primary mb-4">Core Contributions</h2>
+                <div class="w-16 h-1 bg-highlight mx-auto"></div>
+            </div>
+            
+            <div class="grid md:grid-cols-3 gap-6">
+                <div class="card p-8 reveal">
+                    <div class="w-12 h-12 rounded-lg bg-red-50 flex items-center justify-center mb-4">
+                        <i data-lucide="alert-circle" class="w-6 h-6 text-highlight"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-3">The Problem</h3>
+                    <p class="text-gray-600">
+                        Deep LLMs suffer from the <span class="highlight">"curse of depth"</span> — later layers are under-utilized due to variance explosion in Pre-LN architectures.
+                    </p>
+                </div>
+                
+                <div class="card p-8 reveal">
+                    <div class="w-12 h-12 rounded-lg bg-blue-50 flex items-center justify-center mb-4">
+                        <i data-lucide="lightbulb" class="w-6 h-6 text-accent"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-3">The Insight</h3>
+                    <p class="text-gray-600">
+                        <span class="highlight">Sparsity</span> — both implicit (weight decay, long context) and explicit (GQA, MoE) — regulates variance propagation.
+                    </p>
+                </div>
+                
+                <div class="card p-8 reveal">
+                    <div class="w-12 h-12 rounded-lg bg-green-50 flex items-center justify-center mb-4">
+                        <i data-lucide="trending-up" class="w-6 h-6 text-green-600"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-3">The Result</h3>
+                    <p class="text-gray-600">
+                        Practical recipe achieves <span class="highlight">4.6% accuracy improvement</span> on downstream tasks with superior depth utilization.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Motivation Section -->
+    <section id="motivation" class="py-20 bg-white">
+        <div class="max-w-6xl mx-auto px-4">
+            <div class="grid md:grid-cols-2 gap-12 items-center">
+                <div class="reveal">
+                    <p class="text-highlight font-medium text-sm uppercase mb-2">The Challenge</p>
+                    <h2 class="text-3xl font-bold text-primary mb-6">The Curse of Depth</h2>
+                    <p class="text-gray-600 mb-6">
+                        Recent studies show that later Transformer layers in deep LLMs are frequently under-utilized. Many layers can be removed or permuted with minimal performance degradation.
+                    </p>
+                    
+                    <div class="space-y-4">
+                        <div class="flex items-start gap-3">
+                            <div class="w-6 h-6 rounded bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <i data-lucide="trending-up" class="w-3 h-3 text-highlight"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-medium">Variance Explosion</h4>
+                                <p class="text-sm text-gray-500">Output variance grows sub-exponentially with depth</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <div class="w-6 h-6 rounded bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <i data-lucide="minimize-2" class="w-3 h-3 text-highlight"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-medium">Identity Mapping</h4>
+                                <p class="text-sm text-gray-500">Deep layer Jacobians approach identity</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <div class="w-6 h-6 rounded bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <i data-lucide="trash-2" class="w-3 h-3 text-highlight"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-medium">Resource Waste</h4>
+                                <p class="text-sm text-gray-500">L=32 uses 2.56× parameters but wastes 14 layers</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="reveal">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="card p-3">
+                            <img src="static/images/final_layer_variance.png" alt="Last-Layer Variance vs Depth" class="w-full rounded">
+                            <p class="figure-caption text-xs mt-2">Last-Layer Variance vs Depth</p>
+                        </div>
+                        
+                        <div class="card p-3">
+                            <img src="static/images/jacobian_depth_comparison.png" alt="Jacobian Frobenius Norm" class="w-full rounded">
+                            <p class="figure-caption text-xs mt-2">Jacobian ||J-I||_F approaches identity with depth</p>
+                        </div>
+                        
+                        <div class="card p-3">
+                            <img src="static/images/scores_comparison.png" alt="Layer Effectiveness Scores" class="w-full rounded">
+                            <p class="figure-caption text-xs mt-2">Layer Effectiveness Scores</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Theory Section -->
+    <section id="theory" class="py-20 bg-gray-50">
+        <div class="max-w-4xl mx-auto px-4">
+            <div class="text-center mb-10 reveal">
+                <p class="text-highlight font-medium text-sm uppercase mb-2">The Foundation</p>
+                <h2 class="text-3xl font-bold text-primary mb-4">Sparsity as Variance Regulator</h2>
+                <div class="w-16 h-1 bg-highlight mx-auto"></div>
+            </div>
+            
+            <div class="insight-box mb-10 reveal">
+                <h3 class="text-lg font-semibold text-highlight mb-3">Core Insight</h3>
+                <p class="text-gray-700 text-lg">
+                    Sparsity reduces variance propagation in residual-depth architectures. Smaller mask density (higher sparsity) leads to slower variance growth with depth, mitigating the curse of depth.
+                </p>
+            </div>
+            
+            <div class="grid md:grid-cols-2 gap-6">
+                <div class="card p-6 reveal">
+                    <div class="flex items-center gap-2 mb-3">
+                        <div class="w-8 h-8 rounded bg-purple-100 flex items-center justify-center">
+                            <i data-lucide="sparkles" class="w-4 h-4 text-purple-600"></i>
+                        </div>
+                        <h3 class="text-lg font-semibold">Implicit Sparsity</h3>
+                    </div>
+                    <p class="text-gray-500 text-sm mb-3">Emerges dynamically during training</p>
+                    <ul class="space-y-2 text-sm">
+                        <li class="flex items-center gap-2">
+                            <i data-lucide="check" class="w-4 h-4 text-green-500"></i>
+                            <span><strong>Weight Decay</strong> — Induces weight sparsity</span>
+                        </li>
+                        <li class="flex items-center gap-2">
+                            <i data-lucide="check" class="w-4 h-4 text-green-500"></i>
+                            <span><strong>Long Context</strong> — Induces attention sparsity</span>
+                        </li>
+                    </ul>
+                </div>
+                
+                <div class="card p-6 reveal">
+                    <div class="flex items-center gap-2 mb-3">
+                        <div class="w-8 h-8 rounded bg-blue-100 flex items-center justify-center">
+                            <i data-lucide="cpu" class="w-4 h-4 text-blue-600"></i>
+                        </div>
+                        <h3 class="text-lg font-semibold">Explicit Sparsity</h3>
+                    </div>
+                    <p class="text-gray-500 text-sm mb-3">Enforced by architectural design</p>
+                    <ul class="space-y-2 text-sm">
+                        <li class="flex items-center gap-2">
+                            <i data-lucide="check" class="w-4 h-4 text-green-500"></i>
+                            <span><strong>GQA</strong> — Key/value sharing</span>
+                        </li>
+                        <li class="flex items-center gap-2">
+                            <i data-lucide="check" class="w-4 h-4 text-green-500"></i>
+                            <span><strong>MoE</strong> — Sparse expert routing</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Experiments Section -->
+    <section id="experiments" class="py-20 bg-white">
+        <div class="max-w-6xl mx-auto px-4">
+            <div class="text-center mb-12 reveal">
+                <p class="text-highlight font-medium text-sm uppercase mb-2">Empirical Validation</p>
+                <h2 class="text-3xl font-bold text-primary mb-4">Experimental Results</h2>
+                <div class="w-16 h-1 bg-highlight mx-auto"></div>
+            </div>
+            
+            <!-- Experiment Rows -->
+            <div class="space-y-8 mb-16">
+                
+                <!-- Row 1: Weight Decay -->
+                <div class="card p-6 reveal">
+                    <div class="flex items-center gap-2 mb-4">
+                        <div class="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+                            <i data-lucide="scale" class="w-5 h-5 text-blue-600"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-lg">Weight Decay</h3>
+                            <p class="text-xs text-gray-500">Implicit Sparsity</p>
+                        </div>
+                    </div>
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div>
+                            <img src="static/images/WD.png" alt="Weight Decay Variance" class="w-full rounded border">
+                            <p class="figure-caption">Variance vs Weight Decay</p>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead>
+                                    <tr class="border-b-2 border-gray-200">
+                                        <th class="text-left py-2 px-2 font-semibold">Weight Decay (λ)</th>
+                                        <th class="text-center py-2 px-2 font-semibold">PPL ↓</th>
+                                        <th class="text-center py-2 px-2 font-semibold">Usefulness</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="border-b border-gray-100"><td class="py-2 px-2">λ = 0</td><td class="text-center py-2 px-2">15.63</td><td class="text-center py-2 px-2">0.75</td></tr>
+                                    <tr class="border-b border-gray-100"><td class="py-2 px-2">λ = 0.01</td><td class="text-center py-2 px-2">15.20</td><td class="text-center py-2 px-2">0.75</td></tr>
+                                    <tr class="border-b border-gray-100 bg-blue-50 font-semibold"><td class="py-2 px-2 text-blue-600">λ = 0.1 ✓</td><td class="text-center py-2 px-2 text-blue-600">14.83</td><td class="text-center py-2 px-2 text-blue-600">0.81</td></tr>
+                                    <tr class="border-b border-gray-100"><td class="py-2 px-2">λ = 1.0</td><td class="text-center py-2 px-2">15.55</td><td class="text-center py-2 px-2">0.69</td></tr>
+                                    <tr><td class="py-2 px-2 text-gray-400">λ = 3.0</td><td class="text-center py-2 px-2 text-gray-400">773.42</td><td class="text-center py-2 px-2 text-gray-400">0.63</td></tr>
+                                </tbody>
+                            </table>
+                            <p class="text-xs text-gray-500 mt-2 italic">Optimal λ = 0.1 improves both PPL and usefulness score</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Row 2: Sequence Length -->
+                <div class="card p-6 reveal">
+                    <div class="flex items-center gap-2 mb-4">
+                        <div class="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center">
+                            <i data-lucide="align-justify" class="w-5 h-5 text-green-600"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-lg">Sequence Length</h3>
+                            <p class="text-xs text-gray-500">Implicit Sparsity</p>
+                        </div>
+                    </div>
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div>
+                            <img src="static/images/Length.png" alt="Sequence Length Variance" class="w-full rounded border">
+                            <p class="figure-caption">Variance vs Sequence Length</p>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead>
+                                    <tr class="border-b-2 border-gray-200">
+                                        <th class="text-left py-2 px-2 font-semibold">Sequence Length (T)</th>
+                                        <th class="text-center py-2 px-2 font-semibold">PPL ↓</th>
+                                        <th class="text-center py-2 px-2 font-semibold">Usefulness</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="border-b border-gray-100"><td class="py-2 px-2">T = 256</td><td class="text-center py-2 px-2">18.51</td><td class="text-center py-2 px-2">0.69</td></tr>
+                                    <tr class="border-b border-gray-100"><td class="py-2 px-2">T = 512</td><td class="text-center py-2 px-2">15.71</td><td class="text-center py-2 px-2">0.75</td></tr>
+                                    <tr class="border-b border-gray-100"><td class="py-2 px-2">T = 1024</td><td class="text-center py-2 px-2">14.77</td><td class="text-center py-2 px-2">0.75</td></tr>
+                                    <tr class="border-b border-gray-100 bg-green-50 font-semibold"><td class="py-2 px-2 text-green-600">T = 2048 ✓</td><td class="text-center py-2 px-2 text-green-600">14.51</td><td class="text-center py-2 px-2 text-green-600">0.81</td></tr>
+                                    <tr class="border-b border-gray-100"><td class="py-2 px-2">T = 4096</td><td class="text-center py-2 px-2">14.52</td><td class="text-center py-2 px-2">0.81</td></tr>
+                                    <tr><td class="py-2 px-2">T = 8192</td><td class="text-center py-2 px-2">16.30</td><td class="text-center py-2 px-2">0.75</td></tr>
+                                </tbody>
+                            </table>
+                            <p class="text-xs text-gray-500 mt-2 italic">Sweet spot at T = 2048 with optimal perplexity and usefulness</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Row 3: GQA -->
+                <div class="card p-6 reveal">
+                    <div class="flex items-center gap-2 mb-4">
+                        <div class="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center">
+                            <i data-lucide="share-2" class="w-5 h-5 text-purple-600"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-lg">Grouped Query Attention</h3>
+                            <p class="text-xs text-gray-500">Explicit Sparsity</p>
+                        </div>
+                    </div>
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div>
+                            <img src="static/images/GQA.png" alt="GQA Variance" class="w-full rounded border">
+                            <p class="figure-caption">GQA vs MHA Variance Comparison</p>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead>
+                                    <tr class="border-b-2 border-gray-200">
+                                        <th class="text-left py-2 px-2 font-semibold">Group Size (G)</th>
+                                        <th class="text-center py-2 px-2 font-semibold">PPL ↓</th>
+                                        <th class="text-center py-2 px-2 font-semibold">Usefulness</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="border-b border-gray-100"><td class="py-2 px-2">G = 1 (MHA)</td><td class="text-center py-2 px-2">14.52</td><td class="text-center py-2 px-2">0.81</td></tr>
+                                    <tr class="border-b border-gray-100"><td class="py-2 px-2">G = 4 </td><td class="text-center py-2 px-2">14.50</td><td class="text-center py-2 px-2 font-semibold text-purple-600">0.87</td></tr>
+                                    <tr class="bg-purple-50 font-semibold"><td class="py-2 px-2 text-purple-600">G = 16 ✓</td><td class="text-center py-2 px-2 text-purple-600">14.47</td><td class="text-center py-2 px-2 text-purple-600">0.87</td></tr>
+                                </tbody>
+                            </table>
+                            <p class="text-xs text-gray-500 mt-2 italic">G=16 achieves best PPL with 7% improvement in usefulness score</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Row 4: MoE -->
+                <div class="card p-6 reveal">
+                    <div class="flex items-center gap-2 mb-4">
+                        <div class="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center">
+                            <i data-lucide="network" class="w-5 h-5 text-orange-600"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-lg">Mixture of Experts</h3>
+                            <p class="text-xs text-gray-500">Explicit Sparsity</p>
+                        </div>
+                    </div>
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <img src="static/images/MoE-400M.png" alt="MoE 400M" class="w-full rounded border">
+                                    <p class="figure-caption text-xs">400M Scale</p>
+                                </div>
+                                <div>
+                                    <img src="static/images/MoE-1B.png" alt="MoE 1B" class="w-full rounded border">
+                                    <p class="figure-caption text-xs">1B Scale</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead>
+                                    <tr class="border-b-2 border-gray-200">
+                                        <th class="text-left py-2 px-2 font-semibold">Model</th>
+                                        <th class="text-center py-2 px-2 font-semibold">PPL ↓</th>
+                                        <th class="text-center py-2 px-2 font-semibold">Usefulness</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="border-b border-gray-100"><td class="py-2 px-2">Dense-400M</td><td class="text-center py-2 px-2">17.56</td><td class="text-center py-2 px-2">0.87</td></tr>
+                                    <tr class="border-b border-gray-100 bg-orange-50 font-semibold"><td class="py-2 px-2 text-orange-600">MoE-2B/400M ✓</td><td class="text-center py-2 px-2 text-orange-600">15.89</td><td class="text-center py-2 px-2 text-orange-600">0.94</td></tr>
+                                    <tr class="border-b border-gray-100"><td class="py-2 px-2">Dense-1B</td><td class="text-center py-2 px-2">14.52</td><td class="text-center py-2 px-2">0.81</td></tr>
+                                    <tr class="bg-orange-50 font-semibold"><td class="py-2 px-2 text-orange-600">MoE-7B/1B ✓</td><td class="text-center py-2 px-2 text-orange-600">13.82</td><td class="text-center py-2 px-2 text-orange-600">0.94</td></tr>
+                                </tbody>
+                            </table>
+                            <p class="text-xs text-gray-500 mt-2 italic">MoE outperforms dense counterparts by &gt;2 PPL with higher usefulness</p>
+                        </div>
+                    </div>
+                </div>
+                
+            </div>
+            
+            <!-- Ablation Figure -->
+            <div class="card p-6 mb-8 reveal">
+                <h3 class="font-semibold text-center mb-4">Ablation Study: Progressive Performance Gains</h3>
+                <div class="grid md:grid-cols-2 gap-6 items-center">
+                    <div>
+                        <img src="static/images/ablation.png" alt="Ablation Study" class="w-full rounded border">
+                        <p class="figure-caption">Progressive gains when scaling to L=32 with sparsity ingredients</p>
+                    </div>
+                    <div class="flex flex-col items-center justify-center gap-4">
+                        <div class="result-badge">
+                            <i data-lucide="award" class="w-8 h-8"></i>
+                            <div class="text-left">
+                                <p class="text-3xl font-bold">4.6%</p>
+                                <p class="text-sm opacity-90">Accuracy Improvement</p>
+                            </div>
+                        </div>
+                        <div class="p-5 bg-gradient-to-r from-highlight/10 to-orange-50 rounded-xl border border-highlight/20 text-center w-full">
+                            <i data-lucide="sparkles" class="w-6 h-6 text-highlight mx-auto mb-2"></i>
+                            <p class="text-lg font-semibold text-primary">32-layer, 1.2B-parameter model</p>
+                            <p class="text-gray-600 text-sm">Superior depth utilization vs. naive baseline</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- Summary & BibTeX Section -->
+    <section id="summary" class="py-20 bg-gray-50">
+        <div class="max-w-4xl mx-auto px-4">
+            <div class="text-center mb-10 reveal">
+                <h2 class="text-3xl font-bold text-primary mb-4">Key Takeaways</h2>
+                <div class="w-16 h-1 bg-highlight mx-auto"></div>
+            </div>
+            
+            <div class="space-y-4 mb-12">
+                <div class="card p-5 reveal flex items-start gap-4">
+                    <div class="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
+                        <i data-lucide="lightbulb" class="w-5 h-5 text-blue-600"></i>
+                    </div>
+                    <p class="text-gray-700"><span class="font-semibold text-primary">Sparsity is not just for efficiency</span> — it's a critical variance regulator that mitigates the curse of depth.</p>
+                </div>
+                
+                <div class="card p-5 reveal flex items-start gap-4">
+                    <div class="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center flex-shrink-0">
+                        <i data-lucide="git-branch" class="w-5 h-5 text-purple-600"></i>
+                    </div>
+                    <p class="text-gray-700"><span class="font-semibold text-primary">Both implicit & explicit sparsity work</span> — weight decay, long context, GQA, and MoE all reduce variance.</p>
+                </div>
+                
+                <div class="card p-5 reveal flex items-start gap-4">
+                    <div class="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center flex-shrink-0">
+                        <i data-lucide="trending-up" class="w-5 h-5 text-green-600"></i>
+                    </div>
+                    <p class="text-gray-700"><span class="font-semibold text-primary">Practical recipe yields 4.6% boost</span> — a new perspective on training depth-effective LLMs.</p>
+                </div>
+            </div>
+            
+            <!-- BibTeX -->
+            <div class="card p-6 reveal">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-semibold text-lg">Cite This Work</h3>
+                    <button class="copy-btn" onclick="copyBibtex()">
+                        <i data-lucide="copy" class="w-4 h-4 inline mr-1"></i>
+                        <span id="copy-text">Copy</span>
+                    </button>
+                </div>
+                <pre class="bg-gray-100 rounded-lg p-4 overflow-x-auto text-sm text-gray-700" id="bibtex-content">@misc{muhtar2026sparsity,
+  title={When Does Sparsity Mitigate the Curse of Depth in LLMs},
+  author={Muhtar, Dilxat and Song, Xinyuan and Pokutta, Sebastian and 
+          Zimmer, Max and Pelleriti, Nico and Hofmann, Thomas and Liu, Shiwei},
+  year={2026},
+  publisher={arXiv}
+}</pre>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <!-- <footer class="py-10 bg-primary text-white">
+        <div class="max-w-6xl mx-auto px-4">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+                <div class="text-center md:text-left">
+                    <span class="font-semibold text-lg">Sparsity & CoD</span>
+                    <span class="text-gray-400 mx-2">|</span>
+                    <span class="text-gray-400 text-sm">arXiv Preprint</span>
+                </div>
+                
+                <div class="flex items-center gap-4">
+                    <a href="https://github.com/pUmpKin-Co/SparsityAndCoD" target="_blank" class="text-gray-400 hover:text-white transition-colors">
+                        <i data-lucide="github" class="w-5 h-5"></i>
+                    </a>
+                    <a href="mailto:sliu@tue.ellis.eu" class="text-gray-400 hover:text-white transition-colors">
+                        <i data-lucide="mail" class="w-5 h-5"></i>
+                    </a>
+                </div>
+                
+                <p class="text-gray-500 text-sm text-center md:text-right">
+                    © 2026 Max Planck Institute • Emory • ZIB • ETH Zürich
+                </p>
+            </div>
+        </div>
+    </footer> -->
+
+    <!-- Scripts -->
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+        
+        // Scroll reveal
+        const reveals = document.querySelectorAll('.reveal');
+        const revealObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('active');
+                    revealObserver.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+        
+        reveals.forEach(reveal => revealObserver.observe(reveal));
+        
+        // Navigation active state
+        const navLinks = document.querySelectorAll('.nav-link');
+        const sections = document.querySelectorAll('section[id]');
+        
+        window.addEventListener('scroll', () => {
+            const scrollPos = window.scrollY + 100;
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                const sectionHeight = section.offsetHeight;
+                const sectionId = section.getAttribute('id');
+                
+                if (scrollPos >= sectionTop && scrollPos < sectionTop + sectionHeight) {
+                    navLinks.forEach(link => {
+                        link.classList.remove('active');
+                        if (link.getAttribute('href') === `#${sectionId}`) {
+                            link.classList.add('active');
+                        }
+                    });
+                }
+            });
+        });
+        
+        // Smooth scroll for nav links
+        navLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const targetId = link.getAttribute('href');
+                const targetSection = document.querySelector(targetId);
+                if (targetSection) {
+                    targetSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        });
+        
+        // Copy BibTeX
+        function copyBibtex() {
+            const content = document.getElementById('bibtex-content').textContent;
+            const btn = document.querySelector('.copy-btn');
+            const text = document.getElementById('copy-text');
+            
+            navigator.clipboard.writeText(content).then(() => {
+                btn.classList.add('copied');
+                text.textContent = 'Copied!';
+                setTimeout(() => {
+                    btn.classList.remove('copied');
+                    text.textContent = 'Copy';
+                }, 2000);
+            });
+        }
+    </script>
+</body>
+</html>

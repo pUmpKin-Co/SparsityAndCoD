@@ -1,0 +1,17 @@
+# GitHub Pages Configuration
+title: "When Does Sparsity Mitigate the Curse of Depth in LLMs"
+description: "Revealing sparsity as an intrinsic variance regulator that unlocks effective depth utilization in Large Language Models"
+
+# Build settings
+markdown: kramdown
+
+# Exclude files
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor
+  - .git
+  - .github
+  - DEPLOY.md
+  - IMAGE_CONVERSION.md

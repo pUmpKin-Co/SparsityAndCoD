@@ -32,6 +32,7 @@ Through controlled depth-scaling experiments, we demonstrate that sparsity consi
 ---
 
 ## 📰 News
+- **[2026-03]** Our paper is released at [arXiv](https://arxiv.org/abs/2603.15389).
 - **[2026-02]** Our paper is released [here](./assets/Paper.pdf).
 - **[2026-02]** Initial codebase release with training and evaluation scripts.
 

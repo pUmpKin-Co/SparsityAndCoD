@@ -1,0 +1,307 @@
+/* Clean Academic Theme - Sparsity & CoD */
+
+:root {
+    --color-primary: #1a1a2e;
+    --color-secondary: #16213e;
+    --color-accent: #0f3460;
+    --color-highlight: #e94560;
+    --color-muted: #95a5a6;
+    --color-bg: #fafafa;
+    --color-card: #ffffff;
+    --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    font-family: var(--font-sans);
+    background-color: var(--color-bg);
+    color: var(--color-primary);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--color-primary);
+}
+
+a {
+    color: var(--color-highlight);
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+a:hover {
+    color: var(--color-accent);
+}
+
+/* Utility Classes */
+.text-highlight {
+    color: var(--color-highlight);
+}
+
+.bg-highlight {
+    background-color: var(--color-highlight);
+}
+
+/* Card Component */
+.card {
+    background: var(--color-card);
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    transform: translateY(-2px);
+}
+
+/* Button Components */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.25rem;
+    border-radius: 6px;
+    font-weight: 500;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    border: none;
+}
+
+.btn-primary {
+    background-color: var(--color-primary);
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: var(--color-highlight);
+    color: white;
+}
+
+.btn-secondary {
+    background-color: white;
+    color: var(--color-primary);
+    border: 1px solid #e0e0e0;
+}
+
+.btn-secondary:hover {
+    border-color: var(--color-highlight);
+    color: var(--color-highlight);
+}
+
+/* Navigation */
+.nav-link {
+    color: #666;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: color 0.2s ease;
+    position: relative;
+}
+
+.nav-link:hover,
+.nav-link.active {
+    color: var(--color-highlight);
+}
+
+/* Theorem Box */
+.theorem-box {
+    background: #f8f9fa;
+    border-left: 4px solid var(--color-highlight);
+    padding: 1.5rem;
+    border-radius: 0 8px 8px 0;
+    margin: 1.5rem 0;
+}
+
+.theorem-box h3 {
+    color: var(--color-highlight);
+    margin-bottom: 0.75rem;
+}
+
+/* Step Card (for Recipe) */
+.step-card {
+    background: white;
+    border-radius: 8px;
+    padding: 1.25rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    border-left: 3px solid var(--color-accent);
+    transition: box-shadow 0.2s ease;
+}
+
+.step-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Chart Container */
+.chart-container {
+    position: relative;
+    height: 220px;
+    width: 100%;
+}
+
+/* Result Badge */
+.result-badge {
+    background: linear-gradient(135deg, var(--color-highlight), #ff6b6b);
+    color: white;
+    padding: 1rem 2rem;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    box-shadow: 0 4px 12px rgba(233, 69, 96, 0.3);
+}
+
+/* Code/Inline Code */
+code {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.875em;
+    background: #f0f0f0;
+    padding: 0.125rem 0.375rem;
+    border-radius: 4px;
+    color: var(--color-primary);
+}
+
+pre {
+    background: #f5f5f5;
+    padding: 1rem;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+pre code {
+    background: none;
+    padding: 0;
+}
+
+/* Copy Button */
+.copy-btn {
+    background: #f0f0f0;
+    border: none;
+    padding: 0.375rem 0.75rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.copy-btn:hover {
+    background: #e0e0e0;
+}
+
+.copy-btn.copied {
+    background: #27ae60;
+    color: white;
+}
+
+/* Section Reveal Animation */
+.reveal {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+.reveal.active {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Footer */
+footer {
+    background-color: var(--color-primary);
+    color: white;
+}
+
+footer a {
+    color: #95a5a6;
+    transition: color 0.2s ease;
+}
+
+footer a:hover {
+    color: white;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .chart-container {
+        height: 180px;
+    }
+    
+    .theorem-box {
+        padding: 1rem;
+    }
+    
+    .step-card {
+        padding: 1rem;
+    }
+    
+    .result-badge {
+        padding: 0.75rem 1.5rem;
+    }
+}
+
+/* Print Styles */
+@media print {
+    nav, footer {
+        display: none;
+    }
+    
+    body {
+        background: white;
+        color: black;
+    }
+    
+    .card {
+        box-shadow: none;
+        border: 1px solid #ddd;
+        break-inside: avoid;
+    }
+}
+
+/* Selection */
+::selection {
+    background-color: rgba(233, 69, 96, 0.2);
+    color: var(--color-primary);
+}
+
+/* Focus States for Accessibility */
+a:focus-visible,
+button:focus-visible {
+    outline: 2px solid var(--color-highlight);
+    outline-offset: 2px;
+}
+
+/* Smooth Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #a1a1a1;
+}
